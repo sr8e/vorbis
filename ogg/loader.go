@@ -5,16 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/sr8e/vorbis/crc"
+	"github.com/sr8e/vorbis/load"
 )
 
 type OggLoader struct {
-	file    *os.File
-	buf     []byte
-	cur     int // cursor position of buf going to be read.
-	bufLen  int // length of buffer.  bufLen - cur bytes can be read.
+	load.BinaryLoader
 	Streams map[uint32]Stream
 }
 
@@ -24,24 +21,6 @@ type Page struct {
 	granule    uint64
 	seq        uint32
 	packets    []Packet
-}
-
-func (ol *OggLoader) Open(path string) error {
-	if ol.file != nil {
-		return errors.New("file is already opened")
-	}
-	fp, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-	ol.file = fp
-	ol.buf = make([]byte, 256)
-
-	return nil
-}
-
-func (ol *OggLoader) Close() error {
-	return ol.file.Close()
 }
 
 func (ol *OggLoader) ReadAll() error {
@@ -68,7 +47,7 @@ func (ol *OggLoader) readPage() (*Page, error) {
 	p := &Page{}
 	pageBytes := make([]byte, 0)
 
-	pattern, err := ol.getBytes(4)
+	pattern, err := ol.GetBytes(4)
 	if err != nil {
 		if errors.Is(err, io.EOF) {
 			// would be proper end of file
@@ -81,7 +60,7 @@ func (ol *OggLoader) readPage() (*Page, error) {
 	}
 	pageBytes = append(pageBytes, pattern...)
 
-	fields, err := ol.getBytes(23)
+	fields, err := ol.GetBytes(23)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +87,7 @@ func (ol *OggLoader) readPage() (*Page, error) {
 	}
 	p.packets = append(p.packets, initPacket)
 
-	segLens, err := ol.getBytes(segListLen)
+	segLens, err := ol.GetBytes(segListLen)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +108,7 @@ func (ol *OggLoader) readPage() (*Page, error) {
 	}
 
 	for i, packet := range p.packets {
-		data, err := ol.getBytes(packet.size)
+		data, err := ol.GetBytes(packet.size)
 		if err != nil {
 			return nil, err
 		}
@@ -144,38 +123,4 @@ func (ol *OggLoader) readPage() (*Page, error) {
 	}
 
 	return p, nil
-}
-
-func (ol *OggLoader) getBytes(n int) ([]byte, error) {
-	if n <= ol.bufLen-ol.cur {
-		b := make([]byte, 0, n)
-		b = append(b, ol.buf[ol.cur:ol.cur+n]...)
-		ol.cur = ol.cur + n
-		return b, nil
-	}
-
-	resLen := n - (ol.bufLen - ol.cur)
-	b := make([]byte, 0, n)
-	b = append(b, ol.buf[ol.cur:ol.bufLen]...)
-
-	readBytesLen, err := ol.file.Read(ol.buf)
-	ol.bufLen = readBytesLen
-	ol.cur = 0
-
-	if err != nil {
-		if ol.bufLen == 0 && errors.Is(err, io.EOF) {
-			return nil, fmt.Errorf("encountered EOF while reading: %w", err)
-		}
-
-		return nil, err
-	}
-
-	res, err := ol.getBytes(resLen)
-	if err != nil {
-		return nil, err
-	}
-
-	b = append(b, res...)
-	return b, nil
-
 }
