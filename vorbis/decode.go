@@ -6,6 +6,12 @@ import (
 	"github.com/sr8e/vorbis/ogg"
 )
 
+type VorbisDecoder struct {
+	Packets        []ogg.Packet
+	Identification Identification
+	setup          VorbisSetup
+}
+
 type Identification struct {
 	Channels   byte
 	SampleRate uint32
@@ -14,13 +20,16 @@ type Identification struct {
 }
 
 type VorbisSetup struct {
-	codebooks []codebook
+	codebooks      []codebook
+	floorConfigs   []floorConfig
+	residueConfigs []residueConfig
+	mappingConfigs []mappingConfig
+	modeConfigs    []modeConfig
 }
 
-type VorbisDecoder struct {
-	Packets        []ogg.Packet
-	Identification Identification
-	setup          VorbisSetup
+type modeConfig struct {
+	blockFlag bool
+	mapping   uint8
 }
 
 func (vd *VorbisDecoder) ReadHeaders() error {
@@ -30,7 +39,7 @@ func (vd *VorbisDecoder) ReadHeaders() error {
 	}
 	vd.Identification = ident
 
-	vs, err := readSetup(&vd.Packets[2])
+	vs, err := readSetup(&vd.Packets[2], ident)
 	if err != nil {
 		return err
 	}
@@ -96,7 +105,7 @@ func readIdentification(p *ogg.Packet) (_ Identification, err error) {
 	}, nil
 }
 
-func readSetup(p *ogg.Packet) (_ VorbisSetup, err error) {
+func readSetup(p *ogg.Packet, ident Identification) (_ VorbisSetup, err error) {
 	err = readCommonHeader(p, 2)
 	if err != nil {
 		return
@@ -113,9 +122,81 @@ func readSetup(p *ogg.Packet) (_ VorbisSetup, err error) {
 		}
 	}
 
-	// TODO other field
+	// placeholder, discard
+	tdt, err := p.GetUint(6)
+	if err != nil {
+		return
+	}
+	for i := 0; i < int(tdt)+1; i++ {
+		var v uint32
+		v, err = p.GetUint(16)
+		if err != nil {
+			return
+		}
+		if v != 0 {
+			err = fmt.Errorf("non-zero value in time domain transform field: %d, %x", tdt, v)
+			return
+		}
+	}
+
+	floorConfigs, err := readFloorConfig(p)
+	if err != nil {
+		return
+	}
+
+	residueConfigs, err := readResidueConfig(p)
+	if err != nil {
+		return
+	}
+
+	mappingConfigs, err := readMappingConfigs(p, ident)
+	if err != nil {
+		return
+	}
+
+	modeConfigs, err := readModeConfigs(p)
+	if err != nil {
+		return
+	}
+
+	framingBit, err := p.GetFlag()
+	if err != nil {
+		return 
+	}
+	if !framingBit {
+		err = errors.New("framing bit not set")
+		return 
+	}
 
 	return VorbisSetup{
-		codebooks: codebooks,
+		codebooks:      codebooks,
+		floorConfigs:   floorConfigs,
+		residueConfigs: residueConfigs,
+		mappingConfigs: mappingConfigs,
+		modeConfigs:    modeConfigs,
 	}, nil
+}
+
+func readModeConfigs(p *ogg.Packet) ([]modeConfig, error) {
+	modeLen, err := p.GetUint(6)
+	if err != nil {
+		return nil, err
+	}
+	modeLen += 1
+	
+	modes := make([]modeConfig, modeLen, modeLen)
+	for i, _ := range modes {
+		fields, err := p.GetUintSerial(1, 16, 16, 8)
+		if err != nil {
+			return nil, err
+		}
+		if fields[1] != 0 || fields[2] != 0 {
+			return nil, errors.New("invalid non-zero value in mode config")
+		}
+		modes[i] = modeConfig{
+			blockFlag: fields[0] == 1,
+			mapping:   uint8(fields[3]),
+		}
+	}
+	return modes, nil
 }
