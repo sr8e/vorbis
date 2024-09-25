@@ -12,18 +12,18 @@ var mask = [9]byte{
 
 type Packet struct {
 	continueFlag byte // 1 for following, 2 for followed
-	size         int
+	size         uint32
 	data         []byte
-	cur          int
+	cur          uint32
 }
 
-func (p *Packet) GetUint(n int) (uint32, error) {
-	var v uint32
-	for i := 0; i < n; {
+func (p *Packet) GetUint(n uint32) (uint32, error) {
+	var i, v uint32
+	for i = 0; i < n; {
 		bytePos := (p.cur + i) / 8
 		bitOfs := (p.cur + i) % 8
 
-		if bytePos >= len(p.data) {
+		if bytePos >= p.size {
 			return 0, errors.New("end-of-packet condition")
 		}
 
@@ -37,10 +37,39 @@ func (p *Packet) GetUint(n int) (uint32, error) {
 	return v, nil
 }
 
-func (p *Packet) GetBytes(nByte int) ([]byte, error) {
-	arr := make([]byte, nByte)
+func (p *Packet) GetFlag() (bool, error) {
+	v, err := p.GetUint(1)
+	return v == 1, err
+}
 
-	for i := 0; i < nByte; i++ {
+func (p *Packet) GetUint8(n uint32) (uint8, error) {
+	if n > 8 {
+		return 0, errors.New("parameter n is too large")
+	}
+	v, err := p.GetUint(n)
+	return uint8(v), err
+}
+
+func (p *Packet) GetUint16(n uint32) (uint16, error) {
+	if n > 16 {
+		return 0, errors.New("parameter n is too large")
+	}
+	v, err := p.GetUint(n)
+	return uint16(v), err
+}
+
+func (p *Packet) GetUintAsInt(n uint32) (int, error) {
+	if n >= 32 {
+		return 0, errors.New("parameter n is too large")
+	}
+	v, err := p.GetUint(n)
+	return int(v), err
+}
+
+func (p *Packet) GetBytes(nByte uint32) ([]byte, error) {
+	arr := make([]byte, nByte, nByte)
+
+	for i, _ := range arr{
 		b, err := p.GetUint(8)
 		if err != nil {
 			return nil, err
@@ -50,7 +79,7 @@ func (p *Packet) GetBytes(nByte int) ([]byte, error) {
 	return arr, nil
 }
 
-func (p *Packet) GetUintSerial(nList []int) ([]uint32, error) {
+func (p *Packet) GetUintSerial(nList ...uint32) ([]uint32, error) {
 	vals := make([]uint32, len(nList))
 	for i, n := range nList {
 		v, err := p.GetUint(n)

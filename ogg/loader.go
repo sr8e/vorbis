@@ -95,7 +95,7 @@ func (ol *OggLoader) readPage() (*Page, error) {
 
 	packetIndex := 0
 	for i, sl := range segLens {
-		p.packets[packetIndex].size += int(sl)
+		p.packets[packetIndex].size += uint32(sl)
 
 		if sl != 0xff && i < segListLen-1 {
 			// next packet exists
@@ -108,7 +108,7 @@ func (ol *OggLoader) readPage() (*Page, error) {
 	}
 
 	for i, packet := range p.packets {
-		data, err := ol.GetBytes(packet.size)
+		data, err := ol.GetBytes(int(packet.size))
 		if err != nil {
 			return nil, err
 		}
