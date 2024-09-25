@@ -12,7 +12,7 @@ type codebook struct {
 }
 
 type vqLookup struct {
-	dimension int
+	dimension uint16
 	vectors   [][]float64
 }
 
@@ -26,7 +26,7 @@ func readCodebook(p *ogg.Packet) (_ codebook, err error) {
 		return
 	}
 
-	dim, err := p.GetUint(16)
+	dim, err := p.GetUint16(16)
 	if err != nil {
 		return
 	}
@@ -35,11 +35,11 @@ func readCodebook(p *ogg.Packet) (_ codebook, err error) {
 		return
 	}
 
-	entries, err := readCodebookEntries(p, int(entryLen))
+	entries, err := readCodebookEntries(p, entryLen)
 	if err != nil {
 		return
 	}
-	vq, err := readVQLookup(p, int(dim), int(entryLen))
+	vq, err := readVQLookup(p, dim, entryLen)
 	if err != nil {
 		return
 	}
@@ -54,44 +54,44 @@ func readCodebook(p *ogg.Packet) (_ codebook, err error) {
 	}, nil
 }
 
-func readCodebookEntries(p *ogg.Packet, entryLen int) ([]int, error) {
-	entries := make([]int, entryLen)
+func readCodebookEntries(p *ogg.Packet, entryLen uint32) ([]int, error) {
+	entries := make([]int, entryLen, entryLen)
 
-	ordered, err := p.GetUint(1)
+	ordered, err := p.GetFlag()
 	if err != nil {
 		return nil, err
 	}
 
-	if ordered != 0 {
+	if ordered {
 		// TODO
 		return nil, errors.New("ordered codebook is not implemented yet :(")
 	} else {
-		sparse, err := p.GetUint(1)
+		sparse, err := p.GetFlag()
 		if err != nil {
 			return nil, err
 		}
-		for i := 0; i < entryLen; i++ {
-			if sparse != 0 {
-				flag, err := p.GetUint(1)
+		for i, _ := range entries {
+			if sparse {
+				used, err := p.GetFlag()
 				if err != nil {
 					return nil, err
 				}
-				if flag == 0 { // unused entry
+				if !used { 
 					entries[i] = -1
 					continue
 				}
 			}
-			cwLen, err := p.GetUint(5)
+			cwLen, err := p.GetUintAsInt(5)
 			if err != nil {
 				return nil, err
 			}
-			entries[i] = int(cwLen) + 1
+			entries[i] = cwLen + 1
 		}
 	}
 	return entries, nil
 }
 
-func readVQLookup(p *ogg.Packet, dimension int, entryLen int) (_ vqLookup, err error) {
+func readVQLookup(p *ogg.Packet, dimension uint16, entryLen uint32) (_ vqLookup, err error) {
 	lookup, err := p.GetUint(4)
 	if err != nil {
 		return
@@ -104,20 +104,20 @@ func readVQLookup(p *ogg.Packet, dimension int, entryLen int) (_ vqLookup, err e
 		return
 	}
 
-	values, err := p.GetUintSerial([]int{32, 32, 4, 1})
+	values, err := p.GetUintSerial(32, 32, 4, 1)
 	if err != nil {
 		return
 	}
 	minimum := toFloat(values[0])
 	delta := toFloat(values[1])
-	bits := int(values[2]) + 1
+	bits := values[2] + 1
 	seqFlag := values[3] == 1
 
 	var lookupLen int
 	if lookup == 1 {
 		lookupLen = lookup1Values(dimension, entryLen)
 	} else {
-		lookupLen = dimension * entryLen
+		lookupLen = int(dimension) * int(entryLen)
 	}
 	muls := make([]uint32, lookupLen)
 	for i := 0; i < lookupLen; i++ {
@@ -126,13 +126,13 @@ func readVQLookup(p *ogg.Packet, dimension int, entryLen int) (_ vqLookup, err e
 			return
 		}
 	}
-	vectors := make([][]float64, entryLen)
+	vectors := make([][]float64, entryLen, entryLen)
 	if lookup == 1 {
-		for i := 0; i < entryLen; i++ {
+		for i, _ := range vectors{
 			var last float64
 			mulOfs := i
-			vectors[i] = make([]float64, dimension)
-			for j := 0; j < dimension; j++ {
+			vectors[i] = make([]float64, dimension, dimension)
+			for j, _ := range vectors[i] {
 				vectors[i][j] = float64(muls[mulOfs%lookupLen])*delta + minimum + last
 				if seqFlag {
 					last = vectors[i][j] // what tf is this for?
@@ -141,11 +141,11 @@ func readVQLookup(p *ogg.Packet, dimension int, entryLen int) (_ vqLookup, err e
 			}
 		}
 	} else {
-		for i := 0; i < entryLen; i++ {
+		for i, _ := range vectors{
 			var last float64
-			vectors[i] = make([]float64, dimension)
-			for j := 0; j < dimension; j++ {
-				vectors[i][j] = float64(muls[i*dimension+j])*delta + minimum + last
+			vectors[i] = make([]float64, dimension, dimension)
+			for j, _ := range vectors[i] {
+				vectors[i][j] = float64(muls[i*int(dimension)+j])*delta + minimum + last
 				if seqFlag {
 					last = vectors[i][j]
 				}

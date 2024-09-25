@@ -38,12 +38,12 @@ func (vd *VorbisDecoder) ReadHeaders() error {
 	return nil
 }
 
-func readCommonHeader(p *ogg.Packet, headerOrder int) error {
-	packetType, err := p.GetUint(8)
+func readCommonHeader(p *ogg.Packet, headerOrder uint8) error {
+	packetType, err := p.GetUint8(8)
 	if err != nil {
 		return err
 	}
-	if packetType&1 != 1 || packetType>>1 != uint32(headerOrder) {
+	if packetType&1 != 1 || packetType>>1 != headerOrder {
 		return fmt.Errorf("invalid header type %x at packet %d", packetType, headerOrder)
 	}
 	pattern, err := p.GetBytes(6)
@@ -62,7 +62,7 @@ func readIdentification(p *ogg.Packet) (_ Identification, err error) {
 		return
 	}
 
-	fields, err := p.GetUintSerial([]int{32, 8, 32, 32, 32, 32, 4, 4, 1})
+	fields, err := p.GetUintSerial(32, 8, 32, 32, 32, 32, 4, 4, 1)
 	if err != nil {
 		return
 	}
@@ -105,8 +105,8 @@ func readSetup(p *ogg.Packet) (_ VorbisSetup, err error) {
 	if err != nil {
 		return
 	}
-	codebooks := make([]codebook, cbLen)
-	for i := 0; i < int(cbLen); i++ {
+	codebooks := make([]codebook, cbLen + 1)
+	for i, _ := range codebooks {
 		codebooks[i], err = readCodebook(p)
 		if err != nil {
 			return

@@ -15,7 +15,7 @@ func toFloat(v uint32) float64 {
 	return -abs
 }
 
-func lookup1Values(dimension int, entryLen int) int {
+func lookup1Values(dimension uint16, entryLen uint32) int {
 	// TODO verify floating point error
 	return int(math.Floor(math.Pow(float64(entryLen), 1/float64(dimension))))
 }
