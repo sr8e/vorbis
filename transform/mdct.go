@@ -11,14 +11,14 @@ func mdctKernel(data []float64, sampleBits int) []float64 {
 	// mdct(a, b, c, d) -> dct4(-c_rev - d, a - b_rev)
 	dctData := make([]float64, N/2, N/2)
 	for i, _ := range dctData {
-		if i < N / 4 {
-			dctData[i] = - data[i + N*3/4] - data[N*3/4 - 1 - i]
+		if i < N/4 {
+			dctData[i] = -data[i+N*3/4] - data[N*3/4-1-i]
 		} else {
-			dctData[i] = data[i - N/4] - data[N*3/4 - 1 - i]
+			dctData[i] = data[i-N/4] - data[N*3/4-1-i]
 		}
 	}
 
-	return DCT4(dctData, sampleBits - 1)
+	return DCT4(dctData, sampleBits-1)
 }
 
 func MDCT(data []float64, sampleBits int, windowFunc func(int, int) float64) []float64 {
@@ -41,7 +41,7 @@ func MDCT(data []float64, sampleBits int, windowFunc func(int, int) float64) []f
 
 func IMDCT(data []float64, sampleBits int, windowFunc func(int, int) float64) []float64 {
 	N := 1 << sampleBits
-	if len(data) != N / 2 { // coefficients are half the length of samples
+	if len(data) != N/2 { // coefficients are half the length of samples
 		return nil
 	}
 
@@ -49,8 +49,8 @@ func IMDCT(data []float64, sampleBits int, windowFunc func(int, int) float64) []
 		windowFunc = RectWindow
 	}
 
-	res := IDCT4(data, sampleBits - 1)
-	
+	res := IDCT4(data, sampleBits-1)
+
 	// wrap result around boundary condition
 	// res=(A, B) -> return (B, -B_rev, -A_rev, -A)
 	cat := make([]float64, N, N)
@@ -60,7 +60,7 @@ func IMDCT(data []float64, sampleBits int, windowFunc func(int, int) float64) []
 	}
 	copy(cat[N/4:], res)
 	copy(cat[3*N/4:], res[:N/4])
-	slices.Reverse(cat[N/4:3*N/4])
+	slices.Reverse(cat[N/4 : 3*N/4])
 
 	for i, _ := range cat {
 		cat[i] *= windowFunc(i, sampleBits)

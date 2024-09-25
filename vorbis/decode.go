@@ -114,7 +114,7 @@ func readSetup(p *ogg.Packet, ident Identification) (_ VorbisSetup, err error) {
 	if err != nil {
 		return
 	}
-	codebooks := make([]codebook, cbLen + 1)
+	codebooks := make([]codebook, cbLen+1)
 	for i, _ := range codebooks {
 		codebooks[i], err = readCodebook(p)
 		if err != nil {
@@ -161,11 +161,11 @@ func readSetup(p *ogg.Packet, ident Identification) (_ VorbisSetup, err error) {
 
 	framingBit, err := p.GetFlag()
 	if err != nil {
-		return 
+		return
 	}
 	if !framingBit {
 		err = errors.New("framing bit not set")
-		return 
+		return
 	}
 
 	return VorbisSetup{
@@ -183,7 +183,7 @@ func readModeConfigs(p *ogg.Packet) ([]modeConfig, error) {
 		return nil, err
 	}
 	modeLen += 1
-	
+
 	modes := make([]modeConfig, modeLen, modeLen)
 	for i, _ := range modes {
 		fields, err := p.GetUintSerial(1, 16, 16, 8)

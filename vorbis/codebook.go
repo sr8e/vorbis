@@ -76,7 +76,7 @@ func readCodebookEntries(p *ogg.Packet, entryLen uint32) ([]int, error) {
 				if err != nil {
 					return nil, err
 				}
-				if !used { 
+				if !used {
 					entries[i] = -1
 					continue
 				}
@@ -128,7 +128,7 @@ func readVQLookup(p *ogg.Packet, dimension uint16, entryLen uint32) (_ vqLookup,
 	}
 	vectors := make([][]float64, entryLen, entryLen)
 	if lookup == 1 {
-		for i, _ := range vectors{
+		for i, _ := range vectors {
 			var last float64
 			mulOfs := i
 			vectors[i] = make([]float64, dimension, dimension)
@@ -141,7 +141,7 @@ func readVQLookup(p *ogg.Packet, dimension uint16, entryLen uint32) (_ vqLookup,
 			}
 		}
 	} else {
-		for i, _ := range vectors{
+		for i, _ := range vectors {
 			var last float64
 			vectors[i] = make([]float64, dimension, dimension)
 			for j, _ := range vectors[i] {
