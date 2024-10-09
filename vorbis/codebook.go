@@ -63,8 +63,22 @@ func readCodebookEntries(p *ogg.Packet, entryLen uint32) ([]int, error) {
 	}
 
 	if ordered {
-		// TODO
-		return nil, errors.New("ordered codebook is not implemented yet :(")
+		curLen, err := p.GetUintAsInt(5)
+		if err != nil {
+			return nil, err
+		}
+		curLen += 1
+		for i := uint32(0); i < entryLen; {
+			num, err := p.GetUint(fls(int(entryLen - i)))
+			if err != nil {
+				return nil, err
+			}
+			for j := i; j < i+num; j++ {
+				entries[j] = curLen
+			}
+			i += num
+			curLen++
+		}
 	} else {
 		sparse, err := p.GetFlag()
 		if err != nil {
