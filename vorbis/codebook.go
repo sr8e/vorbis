@@ -158,3 +158,37 @@ func readVQLookup(p *ogg.Packet, dimension uint16, entryLen uint32) (_ vqLookup,
 		vectors:   vectors,
 	}, nil
 }
+
+func (cb *codebook) readValue(p *ogg.Packet) (int, error) {
+	tree := cb.decisionTree
+	tree.Reset()
+
+	for tree.GetValue() == -1 {
+		dir, err := p.GetFlag()
+		if err != nil {
+			return 0, err
+		}
+		tree.Descend(dir)
+	}
+	return tree.GetValue(), nil
+}
+
+// ReadScalarValue reads bits from packet until it encounters leaf node in decision tree and returns scalar value.
+func (cb *codebook) ReadScalarValue(p *ogg.Packet) (int, error) {
+	if cb.vqMap.dimension != 0 {
+		return 0, errors.New("cannot read scalar value from vector context")
+	}
+	return cb.readValue(p)
+}
+
+// ReadVectorValue reads bits from packet until it encounters leaf node in decision tree and returns vector value from VQ lookup table.
+func (cb *codebook) ReadVectorValue(p *ogg.Packet) ([]float64, error) {
+	if cb.vqMap.dimension == 0 {
+		return nil, errors.New("cannot read vector value from scalar context")
+	}
+	vqIndex, err := cb.readValue(p)
+	if err != nil {
+		return nil, err
+	}
+	return cb.vqMap.vectors[vqIndex], nil
+}

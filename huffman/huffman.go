@@ -134,3 +134,21 @@ func GenerateHuffmanTree(cwLen []int) (_ HuffmanTree, err error) {
 func (ht *HuffmanTree) String() string {
 	return ht.root.iterateStructure() + "\n" + ht.root.iterateCodeword("")
 }
+
+// Seek replaces current node with its child node of specified side in argument.
+func (ht *HuffmanTree) Descend(right bool) {
+	if right {
+		ht.current = ht.current.right
+	} else {
+		ht.current = ht.current.left
+	}
+}
+
+func (ht *HuffmanTree) GetValue() int {
+	return ht.current.index
+}
+
+// Reset sets current node to root node.
+func (ht *HuffmanTree) Reset() {
+	ht.current = ht.root
+}
