@@ -10,6 +10,8 @@ var mask = [9]byte{
 	0b11111111,
 }
 
+var ErrEndOfPacket = errors.New("end-of-packet condition")
+
 type Packet struct {
 	continueFlag byte // 1 for following, 2 for followed
 	size         uint32
@@ -24,7 +26,7 @@ func (p *Packet) GetUint(n uint32) (uint32, error) {
 		bitOfs := (p.cur + i) % 8
 
 		if bytePos >= p.size {
-			return 0, errors.New("end-of-packet condition")
+			return 0, ErrEndOfPacket
 		}
 
 		b := p.data[bytePos] >> bitOfs

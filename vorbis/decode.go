@@ -31,6 +31,33 @@ type modeConfig struct {
 	mapping   uint8
 }
 
+func (vd *VorbisDecoder) DecodeAll() ([][]float64, error) {
+	if !vd.isReady {
+		err := vd.ReadHeaders()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	samples := make([][]float64, vd.Identification.Channels)
+	for ch, _ := range samples {
+		samples[ch] = make([]float64, 0)
+	}
+
+	for _, packet := range vd.Packets[3:] {
+		content, err := readAudioPacket(&packet, vd.Identification, vd.setup)
+		if err != nil {
+			return nil, err
+		}
+
+		for ch, v := range content {
+			samples[ch] = append(samples[ch], v...)
+		}
+	}
+
+	return samples, nil
+}
+
 func (vd *VorbisDecoder) ReadHeaders() error {
 	ident, err := readIdentification(&vd.Packets[0])
 	if err != nil {
