@@ -7,7 +7,7 @@ import (
 
 func rotationFactor(bits int, inverse bool) []complex128 {
 	N := 1 << bits
-	W := make([]complex128, N, N)
+	W := make([]complex128, N)
 
 	c := -2.0
 	if inverse {
@@ -22,7 +22,7 @@ func rotationFactor(bits int, inverse bool) []complex128 {
 
 func bitReverse(bits int) []int {
 	N := 1 << bits
-	seq := make([]int, N, N)
+	seq := make([]int, N)
 	for i := 0; i < bits; i++ {
 		for j := 0; j < (1 << i); j++ {
 			seq[j+(1<<i)] = seq[j] + (1 << (bits - i - 1))
@@ -41,13 +41,13 @@ func fftKernel(data []complex128, bits int, inverse bool) []complex128 {
 	rev := bitReverse(bits)
 	W := rotationFactor(bits, inverse)
 
-	prev := make([]complex128, N, N)
+	prev := make([]complex128, N)
 	for i := 0; i < N; i++ {
 		prev[i] = data[rev[i]]
 	}
 
 	for i := 0; i < bits; i++ {
-		next := make([]complex128, N, N)
+		next := make([]complex128, N)
 		for j := 0; j < N; j++ {
 			ofs := 1 << i
 			if (j>>i)%2 == 0 {
@@ -71,7 +71,7 @@ func FFT(data []complex128, bits int) []complex128 {
 func IFFT(data []complex128, bits int) []complex128 {
 	f := fftKernel(data, bits, true)
 	N := 1 << bits
-	for i, _ := range f {
+	for i := range f {
 		f[i] /= complex(float64(N), 0)
 	}
 	return f

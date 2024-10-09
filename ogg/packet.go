@@ -69,9 +69,9 @@ func (p *Packet) GetUintAsInt(n uint32) (int, error) {
 }
 
 func (p *Packet) GetBytes(nByte uint32) ([]byte, error) {
-	arr := make([]byte, nByte, nByte)
+	arr := make([]byte, nByte)
 
-	for i, _ := range arr {
+	for i := range arr {
 		b, err := p.GetUint(8)
 		if err != nil {
 			return nil, err

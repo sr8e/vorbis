@@ -55,7 +55,7 @@ func readCodebook(p *ogg.Packet) (_ codebook, err error) {
 }
 
 func readCodebookEntries(p *ogg.Packet, entryLen uint32) ([]int, error) {
-	entries := make([]int, entryLen, entryLen)
+	entries := make([]int, entryLen)
 
 	ordered, err := p.GetFlag()
 	if err != nil {
@@ -84,7 +84,7 @@ func readCodebookEntries(p *ogg.Packet, entryLen uint32) ([]int, error) {
 		if err != nil {
 			return nil, err
 		}
-		for i, _ := range entries {
+		for i := range entries {
 			if sparse {
 				used, err := p.GetFlag()
 				if err != nil {
@@ -140,13 +140,13 @@ func readVQLookup(p *ogg.Packet, dimension uint16, entryLen uint32) (_ vqLookup,
 			return
 		}
 	}
-	vectors := make([][]float64, entryLen, entryLen)
+	vectors := make([][]float64, entryLen)
 	if lookup == 1 {
-		for i, _ := range vectors {
+		for i := range vectors {
 			var last float64
 			mulOfs := i
-			vectors[i] = make([]float64, dimension, dimension)
-			for j, _ := range vectors[i] {
+			vectors[i] = make([]float64, dimension)
+			for j := range vectors[i] {
 				vectors[i][j] = float64(muls[mulOfs%lookupLen])*delta + minimum + last
 				if seqFlag {
 					last = vectors[i][j] // what tf is this for?
@@ -155,10 +155,10 @@ func readVQLookup(p *ogg.Packet, dimension uint16, entryLen uint32) (_ vqLookup,
 			}
 		}
 	} else {
-		for i, _ := range vectors {
+		for i := range vectors {
 			var last float64
-			vectors[i] = make([]float64, dimension, dimension)
-			for j, _ := range vectors[i] {
+			vectors[i] = make([]float64, dimension)
+			for j := range vectors[i] {
 				vectors[i][j] = float64(muls[i*int(dimension)+j])*delta + minimum + last
 				if seqFlag {
 					last = vectors[i][j]

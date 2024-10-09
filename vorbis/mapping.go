@@ -23,8 +23,8 @@ func readMappingConfigs(p *ogg.Packet, ident Identification) ([]mappingConfig, e
 	}
 	mapLen += 1
 
-	maps := make([]mappingConfig, mapLen, mapLen)
-	for i, _ := range maps {
+	maps := make([]mappingConfig, mapLen)
+	for i := range maps {
 		mapType, err := p.GetUint(16)
 		if err != nil {
 			return nil, err
@@ -55,9 +55,9 @@ func readMappingConfigs(p *ogg.Packet, ident Identification) ([]mappingConfig, e
 			}
 			couplingStep += 1
 
-			polarMap = make([][]uint32, couplingStep, couplingStep)
+			polarMap = make([][]uint32, couplingStep)
 			b := fls(int(ident.Channels - 1))
-			for j, _ := range polarMap {
+			for j := range polarMap {
 				polarMap[j], err = p.GetUintSerial(b, b)
 				if err != nil {
 					return nil, err
@@ -74,8 +74,8 @@ func readMappingConfigs(p *ogg.Packet, ident Identification) ([]mappingConfig, e
 
 		var mapMux []uint8
 		if submapLen > 1 {
-			mapMux = make([]uint8, ident.Channels, ident.Channels)
-			for j, _ := range mapMux {
+			mapMux = make([]uint8, ident.Channels)
+			for j := range mapMux {
 				mapMux[j], err = p.GetUint8(4)
 				if err != nil {
 					return nil, err
@@ -87,8 +87,8 @@ func readMappingConfigs(p *ogg.Packet, ident Identification) ([]mappingConfig, e
 		} else { // not mentioned in spec, but it should be...
 			mapMux = []uint8{0}
 		}
-		submaps := make([]mappingSubmap, submapLen, submapLen)
-		for j, _ := range submaps {
+		submaps := make([]mappingSubmap, submapLen)
+		for j := range submaps {
 			fields, err := p.GetUintSerial(8, 8, 8)
 			if err != nil {
 				return nil, err

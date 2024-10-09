@@ -21,8 +21,8 @@ func readResidueConfig(p *ogg.Packet) ([]residueConfig, error) {
 		return nil, err
 	}
 	residueLen := tmp + 1
-	configs := make([]residueConfig, residueLen, residueLen)
-	for i, _ := range configs {
+	configs := make([]residueConfig, residueLen)
+	for i := range configs {
 		residueType, err := p.GetUint16(16)
 		if err != nil {
 			return nil, err
@@ -48,8 +48,8 @@ func readResidueHeader(p *ogg.Packet) (_ residueConfig, err error) {
 		return
 	}
 	clsLen := fields[3] + 1
-	cascade := make([]uint8, clsLen, clsLen)
-	for i, _ := range cascade {
+	cascade := make([]uint8, clsLen)
+	for i := range cascade {
 		var high, low uint8
 		var flag bool
 		low, err = p.GetUint8(3)
@@ -69,7 +69,7 @@ func readResidueHeader(p *ogg.Packet) (_ residueConfig, err error) {
 		cascade[i] = high<<3 + low
 	}
 
-	residueBooks := make([][8]int, clsLen, clsLen)
+	residueBooks := make([][8]int, clsLen)
 	for i, v := range cascade {
 		for j := 0; j < 8; j++ {
 			if (v>>j)&1 == 1 {

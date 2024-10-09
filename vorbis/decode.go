@@ -40,7 +40,7 @@ func (vd *VorbisDecoder) DecodeAll() ([][]float64, error) {
 	}
 
 	samples := make([][]float64, vd.Identification.Channels)
-	for ch, _ := range samples {
+	for ch := range samples {
 		samples[ch] = make([]float64, 0)
 	}
 

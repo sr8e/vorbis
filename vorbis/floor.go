@@ -33,8 +33,8 @@ func readFloorConfig(p *ogg.Packet) ([]floorConfig, error) {
 		return nil, err
 	}
 	floorLen := tmp + 1
-	configs := make([]floorConfig, floorLen, floorLen)
-	for i, _ := range configs {
+	configs := make([]floorConfig, floorLen)
+	for i := range configs {
 		floorType, err := p.GetUint16(16)
 		if err != nil {
 			return nil, err
@@ -60,8 +60,8 @@ func readFloor1Header(p *ogg.Packet) (_ floorConfig, err error) {
 	if err != nil {
 		return
 	}
-	partCls := make([]uint8, partLen, partLen)
-	for i, _ := range partCls {
+	partCls := make([]uint8, partLen)
+	for i := range partCls {
 		partCls[i], err = p.GetUint8(4)
 		if err != nil {
 			return
@@ -69,8 +69,8 @@ func readFloor1Header(p *ogg.Packet) (_ floorConfig, err error) {
 	}
 
 	clsSize := slices.Max(partCls) + 1
-	classes := make([]floor1Class, clsSize, clsSize)
-	for i, _ := range classes {
+	classes := make([]floor1Class, clsSize)
+	for i := range classes {
 		var dim, subcls, masterBook uint8
 		dim, err = p.GetUint8(3)
 		if err != nil {
@@ -91,8 +91,8 @@ func readFloor1Header(p *ogg.Packet) (_ floorConfig, err error) {
 		}
 
 		subBookLen := 1 << subcls
-		subBooks := make([]int, subBookLen, subBookLen)
-		for j, _ := range subBooks {
+		subBooks := make([]int, subBookLen)
+		for j := range subBooks {
 			var tmp int
 			tmp, err = p.GetUintAsInt(8)
 			if err != nil {
@@ -210,7 +210,7 @@ func readFloor1Packet(p *ogg.Packet, blockExp int, config floor1Config, codebook
 		}
 	}
 	sortedIndex := make([]int, len(xValues))
-	for i, _ := range sortedIndex {
+	for i := range sortedIndex {
 		sortedIndex[i] = i
 	}
 	slices.SortFunc(sortedIndex, func(a, b int) int { return int(xValues[a]) - int(xValues[b]) })

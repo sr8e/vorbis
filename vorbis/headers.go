@@ -75,7 +75,7 @@ func readSetup(p *ogg.Packet, ident Identification) (_ VorbisSetup, err error) {
 		return
 	}
 	codebooks := make([]codebook, cbLen+1)
-	for i, _ := range codebooks {
+	for i := range codebooks {
 		codebooks[i], err = readCodebook(p)
 		if err != nil {
 			return
@@ -144,8 +144,8 @@ func readModeConfigs(p *ogg.Packet) ([]modeConfig, error) {
 	}
 	modeLen += 1
 
-	modes := make([]modeConfig, modeLen, modeLen)
-	for i, _ := range modes {
+	modes := make([]modeConfig, modeLen)
+	for i := range modes {
 		fields, err := p.GetUintSerial(1, 16, 16, 8)
 		if err != nil {
 			return nil, err
