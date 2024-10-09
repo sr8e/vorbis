@@ -40,11 +40,11 @@ func fls(x int) (i uint32) {
 }
 
 // lowNeighbor returns argmax { v[i] | i < x and v[i] < v[x] }.
-func lowNeighbor(v []int, x int) int {
-	maxVal := math.MinInt
+func lowNeighbor(v []uint16, x int) int {
+	var maxVal uint16 = 0
 	maxIdx := -1
 	for i := 0; i < x; i++ {
-		if v[i] > maxVal {
+		if maxVal <= v[i] && v[i] < v[x] {
 			maxVal = v[i]
 			maxIdx = i
 		}
@@ -53,14 +53,18 @@ func lowNeighbor(v []int, x int) int {
 }
 
 // highNeighbor returns argmin { v[i] | i < x and v[i] > v[x] }.
-func highNeighbor(v []int, x int) int {
-	minVal := math.MaxInt
+func highNeighbor(v []uint16, x int) int {
+	var minVal uint16 = 1<<16 - 1
 	minIdx := -1
 	for i := 0; i < x; i++ {
-		if v[i] < minVal {
+		if v[x] < v[i] && v[i] <= minVal {
 			minVal = v[i]
 			minIdx = i
 		}
 	}
 	return minIdx
+}
+
+func renderPoint(x0, x1 uint16, y0, y1 int, x uint16) int {
+	return y0 + (y1-y0)*int(x-x0)/int(x1-x0)
 }

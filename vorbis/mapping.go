@@ -84,6 +84,8 @@ func readMappingConfigs(p *ogg.Packet, ident Identification) ([]mappingConfig, e
 					return nil, errors.New("invalid submap mux value")
 				}
 			}
+		} else { // not mentioned in spec, but it should be...
+			mapMux = []uint8{0}
 		}
 		submaps := make([]mappingSubmap, submapLen, submapLen)
 		for j, _ := range submaps {
