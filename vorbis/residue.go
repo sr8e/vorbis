@@ -93,3 +93,135 @@ func readResidueHeader(p *ogg.Packet) (_ residueConfig, err error) {
 		residueBooks:  residueBooks,
 	}, nil
 }
+
+func readResiduePacket(p *ogg.Packet, blockExp int, config residueConfig, codebooks []codebook, noDecodeFlags []bool) ([][]float64, error) {
+	n := 1 << blockExp
+	chNum := len(noDecodeFlags)
+	if config.residueType == 2 {
+		flag := true
+		for _, v := range noDecodeFlags {
+			flag = flag && v
+		}
+		n *= chNum
+		noDecodeFlags = []bool{flag}
+	}
+	decoded, err := decodeCommonResiduePacket(p, n, config, codebooks, noDecodeFlags)
+
+	if err != nil {
+		return nil, err
+	}
+	if config.residueType != 2 {
+		return decoded, nil
+	}
+
+	// de-interleave
+	vec := make([][]float64, chNum)
+	for i := range vec {
+		vec[i] = make([]float64, n/chNum)
+	}
+	for i, val := range decoded[0] {
+		vec[i%chNum][i/chNum] = val
+	}
+	return vec, nil
+}
+
+func decodeCommonResiduePacket(p *ogg.Packet, n int, config residueConfig, codebooks []codebook, noDecodeFlags []bool) (_ [][]float64, err error) {
+	chNum := len(noDecodeFlags)
+	resVectors := make([][]float64, chNum)
+
+	begin := min(n, int(config.begin))
+	end := min(n, int(config.end))
+	readSize := end - begin
+	if readSize <= 0 {
+		for i := range resVectors {
+			resVectors[i] = make([]float64, n)
+		}
+		return resVectors, nil
+	}
+	partSize := int(config.partitionSize)
+	partNum := readSize / partSize
+	cwDim := int(codebooks[config.classBook].vqMap.dimension)
+
+	partClasses := make([][]int, chNum)
+
+	for phase := 0; phase < 8; phase++ {
+		partCount := 0
+		for partCount < partNum {
+			if phase == 0 { // read initial codeword
+				for ch, flag := range noDecodeFlags {
+					partClasses[ch] = make([]int, partNum) // ?
+					resVectors[ch] = make([]float64, n)
+
+					if flag {
+						continue
+					}
+					temp, err := codebooks[config.classBook].ReadScalarValue(p)
+					if err != nil {
+						return nil, err
+					}
+					for i := cwDim - 1; i >= 0; i-- {
+						partClasses[ch][i+partCount] = temp % int(config.classLen)
+						temp /= int(config.classLen)
+					}
+				}
+			}
+			for i := 0; i < cwDim; i++ {
+				for ch, flag := range noDecodeFlags {
+					if flag {
+						continue
+					}
+					pcls := partClasses[ch][partCount]
+					vqBookIndex := config.residueBooks[pcls][phase]
+					if vqBookIndex == -1 { // unused
+						continue
+					}
+					vqBook := codebooks[vqBookIndex]
+					offset := begin + partCount*partSize
+					var partVec []float64
+					if config.residueType == 0 {
+						partVec, err = decodeResidue0(p, vqBook, partSize)
+					} else {
+						partVec, err = decodeResidue1(p, vqBook, partSize)
+					}
+					if err != nil {
+						return nil, err
+					}
+					for j, v := range partVec {
+						resVectors[ch][offset+j] += v
+					}
+				}
+				partCount++
+			}
+		}
+	}
+	return resVectors, nil
+}
+
+func decodeResidue0(p *ogg.Packet, vqBook codebook, partSize int) ([]float64, error) {
+	v := make([]float64, partSize)
+	dim := int(vqBook.vqMap.dimension)
+	step := partSize / dim
+	for i := 0; i < step; i++ {
+		tmp, err := vqBook.ReadVectorValue(p)
+		if err != nil {
+			return nil, err
+		}
+		for j := 0; j < dim; j++ {
+			v[i+step*j] = tmp[j]
+		}
+	}
+	return v, nil
+}
+
+func decodeResidue1(p *ogg.Packet, vqBook codebook, partSize int) ([]float64, error) {
+	v := make([]float64, 0, partSize)
+	dim := int(vqBook.vqMap.dimension)
+	for i := 0; i < partSize; i += dim {
+		tmp, err := vqBook.ReadVectorValue(p)
+		if err != nil {
+			return nil, err
+		}
+		v = append(v, tmp...)
+	}
+	return v, nil
+}

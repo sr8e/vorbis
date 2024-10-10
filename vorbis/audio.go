@@ -64,6 +64,19 @@ func readAudioPacket(p *ogg.Packet, ident Identification, vs VorbisSetup) ([][]f
 		}
 	}
 
+	// residue decode
+	for i, submap := range mapping.submaps {
+		noDecodeFlags := make([]bool, 0, chNum)
+		for ch, submapIndex := range mapping.mapMux {
+			if int(submapIndex) == i {
+				noDecodeFlags = append(noDecodeFlags, noResidueFlags[ch])
+			}
+		}
+		residue := vs.residueConfigs[submap.residue]
+
+		resVectors, err := readResiduePacket(p, blockExp-1, residue, vs.codebooks, noDecodeFlags)
+	}
+
 	// TODO
 
 	return nil, nil
