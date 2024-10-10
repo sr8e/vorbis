@@ -2,7 +2,6 @@ package vorbis
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/sr8e/vorbis/ogg"
 	"github.com/sr8e/vorbis/transform"
@@ -41,33 +40,31 @@ func readAudioPacket(p *ogg.Packet, ident Identification, vs VorbisSetup) ([][]f
 
 	mapping := vs.mappingConfigs[mode.mapping]
 	chNum := int(ident.Channels)
+
+	// floor decode
+	floors := make([][]int, chNum)
+	noResidueFlags := make([]bool, chNum)
 	for i := 0; i < chNum; i++ {
-		var submapIndex uint8
-		// case submaps == 1 is not mentioned in spec?
-		if len(mapping.submaps) > 1 {
-			submapIndex = mapping.mapMux[i]
+		floor := vs.floorConfigs[mapping.submaps[mapping.mapMux[i]].floor]
+
+		floorShape, err := readFloorPacket(p, blockExp-1, floor, vs.codebooks)
+		if err != nil && !errors.Is(err, ogg.ErrEndOfPacket) {
+			return nil, err
 		}
-		floor := vs.floorConfigs[mapping.submaps[submapIndex].floor]
-		if floor.floorType == 0 {
-			// TODO
-		} else if floor.floorType == 1 {
-			floorShape, err := readFloor1Packet(p, blockExp, *floor.config1, vs.codebooks)
-			if err != nil {
-				if errors.Is(err, ogg.ErrEndOfPacket) {
-					// treat as unused
-					goto overlap
-				}
-				return nil, err
-			}
-			if floorShape == nil { // unused
-				goto overlap
-			}
-			fmt.Printf("%v", floorShape)
+		if floorShape == nil { // unused
+			noResidueFlags[i] = true
+		}
+		floors[i] = floorShape
+	}
+	// nonzero propagate
+	for _, v := range mapping.polarMap {
+		if noResidueFlags[v[0]] != noResidueFlags[v[1]] {
+			noResidueFlags[v[0]] = false
+			noResidueFlags[v[1]] = false
 		}
 	}
 
 	// TODO
 
-overlap:
 	return nil, nil
 }

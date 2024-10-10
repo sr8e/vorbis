@@ -72,9 +72,8 @@ func readMappingConfigs(p *ogg.Packet, ident Identification) ([]mappingConfig, e
 			return nil, errors.New("non-zero reserved field in mapping setup")
 		}
 
-		var mapMux []uint8
+		mapMux := make([]uint8, ident.Channels)
 		if submapLen > 1 {
-			mapMux = make([]uint8, ident.Channels)
 			for j := range mapMux {
 				mapMux[j], err = p.GetUint8(4)
 				if err != nil {
@@ -84,8 +83,6 @@ func readMappingConfigs(p *ogg.Packet, ident Identification) ([]mappingConfig, e
 					return nil, errors.New("invalid submap mux value")
 				}
 			}
-		} else { // not mentioned in spec, but it should be...
-			mapMux = []uint8{0}
 		}
 		submaps := make([]mappingSubmap, submapLen)
 		for j := range submaps {

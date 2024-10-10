@@ -139,6 +139,14 @@ func readFloor1Header(p *ogg.Packet) (_ floorConfig, err error) {
 		config1:   &config,
 	}, nil
 }
+func readFloorPacket(p *ogg.Packet, blockExp int, config floorConfig, codebooks []codebook) ([]int, error) {
+	if config.floorType == 0 {
+		return nil, errors.New("not implemented yet")
+	} else if config.floorType == 1 {
+		return readFloor1Packet(p, blockExp, *config.config1, codebooks)
+	}
+	return nil, errors.New("invalid floor type")
+}
 
 func readFloor1Packet(p *ogg.Packet, blockExp int, config floor1Config, codebooks []codebook) ([]int, error) {
 	nonZeroFlag, err := p.GetFlag()
@@ -219,22 +227,16 @@ func readFloor1Packet(p *ogg.Packet, blockExp int, config floor1Config, codebook
 	finalY := make([]int, n)
 
 	prevIndex := sortedIndex[0]
-	finalY[0] = yValues[0]
 	for _, curIndex := range sortedIndex[1:] {
 		x0 := xValues[prevIndex]
 		x1 := xValues[curIndex]
-		if x1 > n { // truncate
-			x1 = n
-		}
-		for x := x0 + 1; x <= x1; x++ {
+		for x := x0; x < min(x1, n); x++ {
 			finalY[x] = renderPoint(x0, x1, yValues[prevIndex], yValues[curIndex], x)
 		}
 		prevIndex = curIndex
 	}
-	if xMax := slices.Max(xValues); xMax < n { // fill
-		for x := xMax + 1; x < n; x++ {
-			finalY[x] = finalY[xMax]
-		}
+	for x := xValues[1]; x < n; x++ {
+		finalY[x] = yValues[1]
 	}
 
 	return finalY, nil
