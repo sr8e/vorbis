@@ -40,6 +40,7 @@ func (vd *VorbisDecoder) DecodeAll() ([][]float64, error) {
 	}
 
 	samples := make([][]float64, vd.Identification.Channels)
+	buf := make([][]float64, vd.Identification.Channels)
 	for ch := range samples {
 		samples[ch] = make([]float64, 0)
 	}
@@ -51,7 +52,28 @@ func (vd *VorbisDecoder) DecodeAll() ([][]float64, error) {
 		}
 
 		for ch, v := range content {
-			samples[ch] = append(samples[ch], v...)
+			curN := len(v) / 2
+			preN := len(buf[ch])
+			if len(buf) == 0 { // first packet
+				buf[ch] = v[curN:]
+				continue
+			}
+
+			left := (preN - curN) / 2
+			right := (preN + curN) / 2
+			overlap := make([]float64, right)
+			for i := 0; i < right; i++ {
+				if i < left {
+					overlap[i] = buf[ch][i]
+				} else if i < preN {
+					overlap[i] = buf[ch][i] + v[i-left]
+				} else {
+					overlap[i] = v[i-left]
+				}
+			}
+			// TODO it seems we need to clip the value into [-1, 1]
+			samples[ch] = append(samples[ch], overlap...)
+			buf[ch] = v[curN:]
 		}
 	}
 

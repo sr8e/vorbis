@@ -2,6 +2,7 @@ package vorbis
 
 import (
 	"errors"
+	"slices"
 
 	"github.com/sr8e/vorbis/ogg"
 	"github.com/sr8e/vorbis/transform"
@@ -56,6 +57,7 @@ func readAudioPacket(p *ogg.Packet, ident Identification, vs VorbisSetup) ([][]f
 		}
 		floors[i] = floorShape
 	}
+
 	// nonzero propagate
 	for _, v := range mapping.polarMap {
 		if noResidueFlags[v[0]] != noResidueFlags[v[1]] {
@@ -65,19 +67,65 @@ func readAudioPacket(p *ogg.Packet, ident Identification, vs VorbisSetup) ([][]f
 	}
 
 	// residue decode
+	residues := make([][]float64, chNum)
 	for i, submap := range mapping.submaps {
 		noDecodeFlags := make([]bool, 0, chNum)
+		chMap := make([]int, 0, chNum)
 		for ch, submapIndex := range mapping.mapMux {
 			if int(submapIndex) == i {
 				noDecodeFlags = append(noDecodeFlags, noResidueFlags[ch])
+				chMap = append(chMap, ch)
 			}
 		}
 		residue := vs.residueConfigs[submap.residue]
 
 		resVectors, err := readResiduePacket(p, blockExp-1, residue, vs.codebooks, noDecodeFlags)
+		if err != nil {
+			return nil, err
+		}
+		for j, v := range resVectors {
+			residues[chMap[j]] = v
+		}
 	}
 
-	// TODO
+	// residue decoupling
+	for _, v := range slices.Backward(mapping.polarMap) {
+		mag := residues[v[0]]
+		amp := residues[v[1]]
 
-	return nil, nil
+		for i := range mag {
+			m := mag[i]
+			a := amp[i]
+			if m > 0 {
+				if a > 0 {
+					amp[i] = m - a
+				} else {
+					mag[i] = m + a
+					amp[i] = m
+				}
+			} else {
+				if a > 0 {
+					amp[i] = m + a
+				} else {
+					mag[i] = m - a
+					amp[i] = m
+				}
+			}
+		}
+	}
+
+	// dot product
+	for ch, fvec := range floors {
+		for j := range fvec {
+			floors[ch][j] *= residues[ch][j]
+		}
+	}
+
+	// inverse MDCT
+	trans := make([][]float64, chNum)
+	for i, v := range floors {
+		trans[i] = transform.IMDCT(v, blockExp, windowFunc)
+	}
+	return trans, nil
+
 }
