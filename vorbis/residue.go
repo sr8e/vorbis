@@ -1,7 +1,9 @@
 package vorbis
 
 import (
+	"errors"
 	"fmt"
+
 	"github.com/sr8e/vorbis/ogg"
 )
 
@@ -128,44 +130,54 @@ func readResiduePacket(p *ogg.Packet, blockExp int, config residueConfig, codebo
 func decodeCommonResiduePacket(p *ogg.Packet, n int, config residueConfig, codebooks []codebook, noDecodeFlags []bool) (_ [][]float64, err error) {
 	chNum := len(noDecodeFlags)
 	resVectors := make([][]float64, chNum)
+	for i := range resVectors {
+		resVectors[i] = make([]float64, n)
+	}
 
 	begin := min(n, int(config.begin))
 	end := min(n, int(config.end))
 	readSize := end - begin
 	if readSize <= 0 {
-		for i := range resVectors {
-			resVectors[i] = make([]float64, n)
-		}
 		return resVectors, nil
 	}
 	partSize := int(config.partitionSize)
-	partNum := readSize / partSize
+	partNum := (readSize-1)/partSize + 1
 	cwDim := int(codebooks[config.classBook].vqMap.dimension)
 
 	partClasses := make([][]int, chNum)
+	for ch := range noDecodeFlags {
+		partClasses[ch] = make([]int, partNum) // ?
+		resVectors[ch] = make([]float64, n)
+	}
 
 	for phase := 0; phase < 8; phase++ {
 		partCount := 0
 		for partCount < partNum {
 			if phase == 0 { // read initial codeword
 				for ch, flag := range noDecodeFlags {
-					partClasses[ch] = make([]int, partNum) // ?
-					resVectors[ch] = make([]float64, n)
-
 					if flag {
 						continue
 					}
 					temp, err := codebooks[config.classBook].ReadScalarValue(p)
 					if err != nil {
+						if errors.Is(err, ogg.ErrEndOfPacket) {
+							return resVectors, nil
+						}
 						return nil, err
 					}
 					for i := cwDim - 1; i >= 0; i-- {
+						if i+partCount >= partNum {
+							break
+						}
 						partClasses[ch][i+partCount] = temp % int(config.classLen)
 						temp /= int(config.classLen)
 					}
 				}
 			}
 			for i := 0; i < cwDim; i++ {
+				if partCount >= partNum {
+					break
+				}
 				for ch, flag := range noDecodeFlags {
 					if flag {
 						continue
@@ -184,6 +196,9 @@ func decodeCommonResiduePacket(p *ogg.Packet, n int, config residueConfig, codeb
 						partVec, err = decodeResidue1(p, vqBook, partSize)
 					}
 					if err != nil {
+						if errors.Is(err, ogg.ErrEndOfPacket) {
+							return resVectors, nil
+						}
 						return nil, err
 					}
 					for j, v := range partVec {
