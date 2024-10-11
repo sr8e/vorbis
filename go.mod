@@ -1,3 +1,3 @@
 module github.com/sr8e/vorbis
 
-go 1.21.1
+go 1.23.2
