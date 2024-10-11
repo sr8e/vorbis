@@ -42,7 +42,7 @@ func readAudioPacket(p *ogg.Packet, ident Identification, vs VorbisSetup) ([][]f
 	chNum := int(ident.Channels)
 
 	// floor decode
-	floors := make([][]int, chNum)
+	floors := make([][]float64, chNum)
 	noResidueFlags := make([]bool, chNum)
 	for i := 0; i < chNum; i++ {
 		floor := vs.floorConfigs[mapping.submaps[mapping.mapMux[i]].floor]

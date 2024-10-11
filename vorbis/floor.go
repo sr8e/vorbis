@@ -132,14 +132,14 @@ func readFloor1Header(p *ogg.Packet) (_ floorConfig, err error) {
 		xList:      xList,
 		partitions: partCls,
 		classes:    classes,
-		multiplier: mul,
+		multiplier: mul + 1,
 	}
 	return floorConfig{
 		floorType: 1,
 		config1:   &config,
 	}, nil
 }
-func readFloorPacket(p *ogg.Packet, blockExp int, config floorConfig, codebooks []codebook) ([]int, error) {
+func readFloorPacket(p *ogg.Packet, blockExp int, config floorConfig, codebooks []codebook) ([]float64, error) {
 	if config.floorType == 0 {
 		return nil, errors.New("not implemented yet")
 	} else if config.floorType == 1 {
@@ -148,7 +148,7 @@ func readFloorPacket(p *ogg.Packet, blockExp int, config floorConfig, codebooks 
 	return nil, errors.New("invalid floor type")
 }
 
-func readFloor1Packet(p *ogg.Packet, blockExp int, config floor1Config, codebooks []codebook) ([]int, error) {
+func readFloor1Packet(p *ogg.Packet, blockExp int, config floor1Config, codebooks []codebook) ([]float64, error) {
 	nonZeroFlag, err := p.GetFlag()
 	if err != nil {
 		return nil, err
@@ -156,7 +156,8 @@ func readFloor1Packet(p *ogg.Packet, blockExp int, config floor1Config, codebook
 	if !nonZeroFlag { // unused floor
 		return nil, nil
 	}
-	yRange := floor1Multiplier[config.multiplier-1]
+	mul := int(config.multiplier)
+	yRange := floor1Multiplier[mul-1]
 	yBits := fls(yRange - 1)
 	yValues := make([]int, 0)
 	yInits, err := p.GetUintSerial(yBits, yBits)
@@ -231,13 +232,17 @@ func readFloor1Packet(p *ogg.Packet, blockExp int, config floor1Config, codebook
 		x0 := xValues[prevIndex]
 		x1 := xValues[curIndex]
 		for x := x0; x < min(x1, n); x++ {
-			finalY[x] = renderPoint(x0, x1, yValues[prevIndex], yValues[curIndex], x)
+			finalY[x] = renderPoint(x0, x1, mul*yValues[prevIndex], mul*yValues[curIndex], x)
 		}
 		prevIndex = curIndex
 	}
 	for x := xValues[1]; x < n; x++ {
-		finalY[x] = yValues[1]
+		finalY[x] = mul * yValues[1]
 	}
 
-	return finalY, nil
+	inv := make([]float64, n)
+	for i, v := range finalY {
+		inv[i] = inverseDecibels(v)
+	}
+	return inv, nil
 }
