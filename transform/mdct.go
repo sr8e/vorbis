@@ -49,7 +49,8 @@ func IMDCT(data []float64, sampleBits int, windowFunc func(int, int) float64) []
 		windowFunc = RectWindow
 	}
 
-	res := IDCT4(data, sampleBits-1)
+	// no need to normalize on decoding vorbis
+	res := DCT4(data, sampleBits-1)
 
 	// wrap result around boundary condition
 	// res=(A, B) -> return (B, -B_rev, -A_rev, -A)
