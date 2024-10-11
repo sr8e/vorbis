@@ -5,8 +5,8 @@ import (
 )
 
 func toFloat(v uint32) float64 {
-	frac := v & 0x1fffff       // 21 bits
-	exp := (v>>21)&0x3ff - 788 // 10 bits
+	frac := v & 0x1fffff          // 21 bits
+	exp := int(v>>21)&0x3ff - 788 // 10 bits
 
 	abs := float64(frac) * math.Pow(2, float64(exp))
 	if (v>>31)&1 == 0 {
